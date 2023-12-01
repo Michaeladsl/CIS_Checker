@@ -1,0 +1,8 @@
+selenium
+webdriver_manager
+Pillow
+boto3
+selenium
+webdriver-manager
+botocore
+tqdm
