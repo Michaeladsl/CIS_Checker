@@ -1,3 +1,4 @@
+#!/bin/python3
 # CIS 2.0.0 Check for AWS
 # Author: Michael Raines
 
