@@ -1,5 +1,6 @@
 # CIS 2.0.0 Check for AWS
 # Author: Michael Raines
+
 import boto3
 import json
 import datetime
