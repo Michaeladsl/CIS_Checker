@@ -90,23 +90,21 @@ explanation_1_22 = "Roles_With_AWSCloudShellFullAccess should be empty to ensure
 explanation_2_1_1 = "Effect should be set to deny and aws:SecureTransport should be false."
 explanation_2_1_2 = "MFADelete should be enabled for all S3 buckets."
 explanation_2_1_4 = "A public access block should be present and not set to false."
-explanation_2_2_1 = "EbsEncryptionByDefault should be set to true."
-explanation_2_3_1 = "StorageEncrypted should return a value of true to ensure storage buckets are encrypted at rest."
-explanation_2_3_2 = "AutoMinorVersionUpgrade should return a value of true to ensure minor version upgrades are automated."
-explanation_2_3_3 = "The PubliclyAccessible flag should be set false to ensure RDS instances are not publically accessible."
-explanation_2_4_1 = "Each EFS filesystem should be encrypted."
+explanation_2_2_1 = "StorageEncrypted should return a value of true to ensure storage buckets are encrypted at rest."
+explanation_2_2_2 = "AutoMinorVersionUpgrade should return a value of true to ensure minor version upgrades are automated."
+explanation_2_2_3 = "The PubliclyAccessible flag should be set false to ensure RDS instances are not publically accessible."
+explanation_2_3_1 = "Each EFS filesystem should be encrypted."
 explanation_3_1 = "CloudTrails should be enabled for all regions."
 explanation_3_2 = "CloudTrail Log File Validation should be enabled."
-explanation_3_3 = "CloutTrail log storage bucket should not have public access."
-explanation_3_4 = "CloudWatchLogsLogGroupArn should contain an ARN."
-explanation_3_5 = "Recording should not return a value of false."
-explanation_3_6 = "LoggingEnabled should not return a null value."
-explanation_3_7 = "KmsKeyId should return the arn of the kms access key."
-explanation_3_8 = "KeyRotationEnabled should return a value of true."
-explanation_3_9 = "Every VPC ID returned does not have flow logging enabled."
-explanation_3_10 = "HasS3WriteEvents should have a value of true."
-explanation_3_11 = "HasS3ReadEvents should have a value of true."
+explanation_3_3 = "Recording should not return a valur of false"
+explanation_3_4 = "LoggingEnabled should not return a null value."
+explanation_3_5 = "KmsKeyId should return the arn of the kms access key."
+explanation_3_6 = "KeyRotationEnabled should return a value of true."
+explanation_3_7 = "Every VPC ID returned does not have flow logging enabled."
+explanation_3_8 = "HasS3WriteEvents should have a value of true."
+explanation_3_9 = "HasS3ReadEvents should have a value of true."
 explanation_4_16 = "AWS Security hub should be enabled."
+explanation_5_1_1 = "EbsEncryptionByDefault should be set to true."
 explanation_5_1 = ""
 explanation_5_2 = ""
 explanation_5_3 = ""
@@ -772,32 +770,10 @@ def check_s3_bucket_public_access():
     return non_compliant_buckets
 
 
-
-
-
-def check_ebs_encryption_by_default():
-    ec2_regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
-    non_compliant_regions = []
-
-    for region in ec2_regions:
-        ec2_client = session.client('ec2', region_name=region)
-        try:
-            response = ec2_client.get_ebs_encryption_by_default()
-            if not response['EbsEncryptionByDefault']:
-                non_compliant_regions.append({
-                    "region": region,
-                    "EbsEncryptionByDefault": response['EbsEncryptionByDefault']
-                })
-        except Exception as e:
-            print(f"Error checking region {region}: {e}")
-            continue
-
-    return non_compliant_regions
-
-
-
 rds = session.client('rds')
-def check_2_3_1_rds_encryption_at_rest():
+
+
+def check_2_2_1_rds_encryption_at_rest():
     ec2_client = session.client('ec2')
     regions = [region['RegionName'] for region in ec2_client.describe_regions()['Regions']]
     
@@ -820,7 +796,7 @@ def check_2_3_1_rds_encryption_at_rest():
     return unencrypted_rds_details
 
 
-def check_2_3_2_rds_auto_minor_upgrade():
+def check_2_2_2_rds_auto_minor_upgrade():
     ec2_client = session.client('ec2')
     rds_client = session.client('rds')
 
@@ -843,7 +819,7 @@ def check_2_3_2_rds_auto_minor_upgrade():
     return non_compliant_details
 
 
-def check_2_3_3_rds_public_access():
+def check_2_2_3_rds_public_access():
     ec2_client = session.client('ec2')
     regions = [region['RegionName'] for region in ec2_client.describe_regions()['Regions']]
 
@@ -865,8 +841,7 @@ def check_2_3_3_rds_public_access():
     return public_access_rds_instances
 
 
-
-def check_2_4_1_efs_encryption():
+def check_2_3_1_efs_encryption():
     efs_client = session.client('efs')
     regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
     
@@ -938,59 +913,7 @@ def check_3_2_cloudtrail_log_file_validation():
     
     return trails_without_validation
 
-
-def check_3_3_cloudtrail_s3_bucket_access():
-    cloudtrail_client = session.client('cloudtrail')
-    s3_client = session.client('s3')
-    
-    public_buckets = []
-    
-    try:
-        trails = cloudtrail_client.describe_trails()
-        for trail in trails['trailList']:
-            bucket_name = trail['S3BucketName']
-
-            try:
-                policy = s3_client.get_bucket_policy(Bucket=bucket_name)['Policy']
-                if '"Effect": "Allow", "Principal": "*"' in policy:
-                    public_buckets.append(bucket_name)
-                    continue
-            except s3_client.exceptions.NoSuchBucketPolicy:
-                pass
-
-            acl = s3_client.get_bucket_acl(Bucket=bucket_name)
-            for grant in acl['Grants']:
-                if grant['Grantee']['Type'] == 'Group' and 'AllUsers' in grant['Grantee']['URI']:
-                    public_buckets.append(bucket_name)
-                    break
-
-    except Exception as e:
-        print(f"Error checking CloudTrail S3 bucket access: {e}")
-    
-    return public_buckets
-
-
-def check_3_4_cloudtrail_cloudwatch_integration():
-    cloudtrail_client = session.client('cloudtrail')
-    
-    trails_integration_status = []
-    
-    try:
-        trails = cloudtrail_client.describe_trails()
-        for trail in trails['trailList']:
-            trails_integration_status.append({
-                'TrailName': trail['Name'],
-                'CloudWatchLogsLogGroupArn': trail.get('CloudWatchLogsLogGroupArn', None)
-            })
-
-    except Exception as e:
-        print(f"Error checking CloudTrail integration with CloudWatch Logs: {e}")
-    
-    return trails_integration_status
-
-
-
-def check_3_5_aws_config_all_regions():
+def check_3_3_aws_config_all_regions():
     client = session.client('config')
     regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
     
@@ -1011,8 +934,7 @@ def check_3_5_aws_config_all_regions():
     
     return region_statuses
 
-
-def check_3_6_s3_bucket_logging():
+def check_3_4_s3_bucket_logging():
     cloudtrail_client = session.client('cloudtrail')
     s3_client = session.client('s3')
     
@@ -1036,9 +958,7 @@ def check_3_6_s3_bucket_logging():
 
     return bucket_logging_details
 
-
-
-def check_3_7_cloudtrail_kms_encryption():
+def check_3_5_cloudtrail_kms_encryption():
     cloudtrail_client = session.client('cloudtrail')
     
     trails = cloudtrail_client.describe_trails()['trailList']
@@ -1056,9 +976,7 @@ def check_3_7_cloudtrail_kms_encryption():
 
     return trail_encryption_details
 
-
-
-def check_3_8_kms_key_rotation():
+def check_3_6_kms_key_rotation():
     kms_client = session.client('kms')
     
     paginator = kms_client.get_paginator('list_keys')
@@ -1080,10 +998,7 @@ def check_3_8_kms_key_rotation():
 
     return cmk_rotation_details
 
-
-
-
-def check_3_9_vpc_flow_logs():
+def check_3_7_vpc_flow_logs():
     ec2_client = session.client('ec2')
     vpcs_without_flow_logs = []
 
@@ -1099,8 +1014,7 @@ def check_3_9_vpc_flow_logs():
 
     return vpcs_without_flow_logs
 
-
-def check_3_10_object_level_logging():
+def check_3_8_object_level_logging():
     cloudtrail_client = session.client('cloudtrail')
     all_trails = cloudtrail_client.list_trails()['Trails']
     trail_details = []
@@ -1146,7 +1060,7 @@ def check_3_10_object_level_logging():
 
     return trail_details
 
-def check_3_11_object_level_logging_for_read_events():
+def check_3_9_object_level_logging_for_read_events():
     cloudtrail_client = session.client('cloudtrail')
     all_trails = cloudtrail_client.list_trails()['Trails']
     trail_details = []
@@ -1188,6 +1102,71 @@ def check_3_11_object_level_logging_for_read_events():
 
 # SKIPPED 4.x MONITOR SECTION
 
+def check_4_1_unauthorized_api_calls_monitored():
+    cloudtrail_client = boto3.client('cloudtrail')
+    logs_client = boto3.client('logs')
+    cloudwatch_client = boto3.client('cloudwatch')
+    sns_client = boto3.client('sns')
+
+    # Step 1: List all CloudTrail trails and identify active multi-region trails
+    trails = cloudtrail_client.describe_trails()['trailList']
+    multi_region_trail = None
+
+    for trail in trails:
+        if trail['IsMultiRegionTrail']:
+            trail_status = cloudtrail_client.get_trail_status(Name=trail['Name'])
+            if trail_status['IsLogging']:
+                multi_region_trail = trail
+                trail_log_group_name = multi_region_trail['CloudWatchLogsLogGroupArn'].split(':')[-1].split('*')[0]
+                break
+
+    if not multi_region_trail:
+        return "No active multi-region CloudTrail trail found."
+
+    # Step 2: Check event selectors for management events
+    event_selectors = cloudtrail_client.get_event_selectors(TrailName=multi_region_trail['Name'])
+    management_events = any(
+        selector.get('IncludeManagementEvents') and selector.get('ReadWriteType') == 'All'
+        for selector in event_selectors['EventSelectors']
+    )
+
+    if not management_events:
+        return "Multi-region CloudTrail trail does not capture all management events."
+
+    # Step 3: Describe metric filters
+    metric_filters = logs_client.describe_metric_filters(logGroupName=trail_log_group_name)['metricFilters']
+    unauthorized_metric_name = None
+
+    for filter in metric_filters:
+        if filter[
+            'filterPattern'] == '{ ($.errorCode ="*UnauthorizedOperation") || ($.errorCode ="AccessDenied*") && ($.sourceIPAddress!="delivery.logs.amazonaws.com") && ($.eventName!="HeadBucket") }':
+            unauthorized_metric_name = filter['metricTransformations'][0]['metricName']
+            break
+
+    if not unauthorized_metric_name:
+        return "Required metric filter for unauthorized API calls not found."
+
+    # Step 4: Describe CloudWatch alarms for the unauthorized API calls metric
+    alarms = cloudwatch_client.describe_alarms(MetricName=unauthorized_metric_name)['MetricAlarms']
+    sns_topic_arn = None
+
+    for alarm in alarms:
+        sns_topic_arn = alarm['AlarmActions'][0] if alarm['AlarmActions'] else None
+        break
+
+    if not sns_topic_arn:
+        return "No CloudWatch alarms found for unauthorized API calls metric."
+
+    # Step 5: Ensure there is at least one active subscriber to the SNS topic
+    subscriptions = sns_client.list_subscriptions_by_topic(TopicArn=sns_topic_arn)['Subscriptions']
+    valid_subscription = any(sub['SubscriptionArn'] for sub in subscriptions)
+
+    if not valid_subscription:
+        return "No active subscribers found for the SNS topic."
+
+    return "Account is compliant with CIS Benchmark 4.1."
+
+
 def check_4_16_security_hub_enabled():
     securityhub_client = session.client('securityhub')
 
@@ -1201,7 +1180,26 @@ def check_4_16_security_hub_enabled():
         return None
 
 
-def check_5_1_nacls_ingress_ports():
+def check_5_1_1_ebs_encryption_by_default():
+    ec2_regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
+    non_compliant_regions = []
+
+    for region in ec2_regions:
+        ec2_client = session.client('ec2', region_name=region)
+        try:
+            response = ec2_client.get_ebs_encryption_by_default()
+            if not response['EbsEncryptionByDefault']:
+                non_compliant_regions.append({
+                    "region": region,
+                    "EbsEncryptionByDefault": response['EbsEncryptionByDefault']
+                })
+        except Exception as e:
+            print(f"Error checking region {region}: {e}")
+            continue
+
+    return non_compliant_regions
+
+def check_5_2_nacls_ingress_ports():
     ec2_client = session.client('ec2')
     admin_ports = [22, 3389, -1, 0]
     violating_nacl_entries = []
@@ -1241,7 +1239,7 @@ def check_5_1_nacls_ingress_ports():
 
 
 
-def check_5_2_sgs_ingress_ports():
+def check_5_3_sgs_ingress_ports():
     ec2_client = session.client('ec2')
     paginator = ec2_client.get_paginator('describe_security_groups')
     violating_sg_entries = []
@@ -1267,7 +1265,7 @@ def check_5_2_sgs_ingress_ports():
 
 
 
-def check_5_3_sgs_ipv6_ingress_ports():
+def check_5_4_sgs_ipv6_ingress_ports():
     ec2_client = session.client('ec2')
     violating_sg_entries = []
     admin_ports = [22, 3389, -1, 0]
@@ -1292,7 +1290,7 @@ def check_5_3_sgs_ipv6_ingress_ports():
 
 
 
-def check_5_4_default_sgs_restrict_all_traffic():
+def check_5_5_default_sgs_restrict_all_traffic():
     ec2_client = session.client('ec2')
     violating_sgs = []
 
@@ -1336,7 +1334,7 @@ def check_5_4_default_sgs_restrict_all_traffic():
 
 
 
-def check_5_5_vpc_peering_least_access():
+def check_5_6_vpc_peering_least_access():
     ec2_client = session.client('ec2')
     peering_violations = []
 
@@ -1370,7 +1368,7 @@ def check_5_5_vpc_peering_least_access():
 
 
 
-def check_5_6_ec2_imdsv2_only():
+def check_5_7_ec2_imdsv2_only():
     ec2_client = session.client('ec2')
     imds_violations = []
 
@@ -1969,125 +1967,106 @@ except Exception as e:
         "status": "ERROR"
     }
 
-
 print("Performing Check for 2.2.1")
 try:
-    non_compliant_regions = check_ebs_encryption_by_default()
-    results["2.2.1"] = {
-        "description": "Ensure EBS Volume Encryption is Enabled in all Regions.",
-        "result": non_compliant_regions if non_compliant_regions else "All regions have EBS encryption enabled by default.",
-        "explanation": explanation_2_2_1,
-        "status": "PASS" if not non_compliant_regions else "FAIL"
-    }
-    write_results_to_file(results)
-except Exception as e:
-    logger.error(f"Error in 2.2.1 check: {str(e)}")
-    results["2.2.1"] = {
-        "description": "Ensure EBS Volume Encryption is Enabled in all Regions.",
-        "result": f"Error occurred during check: {str(e)}",
-        "status": "ERROR"
-    }
-
-print("Performing Check for 2.3.1")
-try:
-    unencrypted_rds_details = check_2_3_1_rds_encryption_at_rest()
+    unencrypted_rds_details = check_2_2_1_rds_encryption_at_rest()
     if unencrypted_rds_details:
-        results["2.3.1"] = {
+        results["2.2.1"] = {
             "description": "Ensure that encryption-at-rest is enabled for RDS Instances",
             "result": unencrypted_rds_details,
-            "explanation": explanation_2_3_1,
+            "explanation": explanation_2_2_1,
             "status": "FAIL"
         }
     else:
-        results["2.3.1"] = {
+        results["2.2.1"] = {
             "description": "Ensure that encryption-at-rest is enabled for RDS Instances",
             "result": "All RDS instances across all regions are encrypted",
             "status": "PASS"
         }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 2.3.1 check: {str(e)}")
-    results["2.3.1"] = {
+    logger.error(f"Error in 2.2.1 check: {str(e)}")
+    results["2.2.1"] = {
         "description": "Ensure that encryption-at-rest is enabled for RDS Instances",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
 
-print("Performing Check for 2.3.2")
+print("Performing Check for 2.2.2")
 try:
-    auto_minor_upgrade_details = check_2_3_2_rds_auto_minor_upgrade()
+    auto_minor_upgrade_details = check_2_2_2_rds_auto_minor_upgrade()
     if auto_minor_upgrade_details:
-        results["2.3.2"] = {
+        results["2.2.2"] = {
             "description": "Ensure RDS instances have Auto Minor Version Upgrade enabled.",
             "result": auto_minor_upgrade_details,
-            "explanation": explanation_2_3_2,
+            "explanation": explanation_2_2_2,
             "status": "FAIL"
         }
     else:
-        results["2.3.2"] = {
+        results["2.2.2"] = {
             "description": "Ensure RDS instances have Auto Minor Version Upgrade enabled.",
             "result": "All RDS instances have Auto Minor Version Upgrade enabled.",
             "status": "PASS"
         }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 2.3.2 check: {str(e)}")
-    results["2.3.2"] = {
+    logger.error(f"Error in 2.2.2 check: {str(e)}")
+    results["2.2.2"] = {
         "description": "Ensure RDS instances have Auto Minor Version Upgrade enabled.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
 
 
-print("Performing Check for 2.3.3")
+print("Performing Check for 2.2.3")
 try:
-    public_access_rds_instances = check_2_3_3_rds_public_access()
+    public_access_rds_instances = check_2_2_3_rds_public_access()
     if public_access_rds_instances:
-        results["2.3.3"] = {
+        results["2.2.3"] = {
             "description": "Ensure that public access is not given to RDS instances.",
             "result": public_access_rds_instances,
-            "explanation": explanation_2_3_3,
+            "explanation": explanation_2_2_3,
             "status": "FAIL"
         }
     else:
-        results["2.3.3"] = {
+        results["2.2.3"] = {
             "description": "Ensure that public access is not given to RDS instances.",
             "result": "No RDS instances with public access found.",
             "status": "PASS"
         }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 2.3.3 check: {str(e)}")
-    results["2.3.3"] = {
+    logger.error(f"Error in 2.2.3 check: {str(e)}")
+    results["2.2.3"] = {
         "description": "Ensure that public access is not given to RDS instances.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
 
-print("Performing Check for 2.4.1")
+print("Performing Check for 2.3.1")
 try:
-    unencrypted_efs_by_region = check_2_4_1_efs_encryption()
+    unencrypted_efs_by_region = check_2_3_1_efs_encryption()
     if unencrypted_efs_by_region:
         formatted_results = []
         for region, fs_details in unencrypted_efs_by_region.items():
             for fs in fs_details:
                 formatted_results.append(f"Region: {region}, FileSystemId: {fs['FileSystemId']}, Encrypted: {fs['Encrypted']}")
-        results["2.4.1"] = {
+        results["2.3.1"] = {
             "description": "Ensure that encryption is enabled for EFS file systems",
             "result": formatted_results,
-            "explanation": explanation_2_4_1,
+            "explanation": explanation_2_3_1,
             "status": "FAIL"
         }
     else:
-        results["2.4.1"] = {
+        results["2.3.1"] = {
             "description": "Ensure that encryption is enabled for EFS file systems",
             "result": "Encryption is enabled for all EFS file systems across all regions.",
             "status": "PASS"
         }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 2.4.1 check: {str(e)}")
-    results["2.4.1"] = {
+    logger.error(f"Error in 2.3.1 check: {str(e)}")
+    results["2.3.1"] = {
         "description": "Ensure that encryption is enabled for EFS file systems",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
@@ -2140,93 +2119,51 @@ except Exception as e:
         "status": "ERROR"
     }
 
-
-
 print("Performing Check for 3.3")
-public_s3_buckets = check_3_3_cloudtrail_s3_bucket_access()
-results["3.3"] = {
-    "description": "Ensure the S3 bucket used to store CloudTrail logs is not publicly accessible",
-    "result": ", ".join(public_s3_buckets) if public_s3_buckets else "All CloudTrail S3 buckets are private",
-    "explanation": explanation_3_3,
-    "status": "PASS" if not public_s3_buckets else "FAIL"
-}
-write_results_to_file(results)
-
-
-print("Performing Check for 3.4")
 try:
-    integration_status = check_3_4_cloudtrail_cloudwatch_integration()
-
-    non_integrated_trails = [trail['TrailName'] for trail in integration_status if not trail['CloudWatchLogsLogGroupArn']]
-    
-    results["3.4"] = {
-        "description": "Ensure CloudTrail integration with CloudWatch Logs is enabled.",
-        "result": {
-            "TrailsNotIntegrated": non_integrated_trails,
-            "AllTrailIntegrations": integration_status
-        },
-        "explanation": explanation_3_4,
-        "status": "PASS" if not non_integrated_trails else "FAIL"
-    }
-    write_results_to_file(results)
-except Exception as e:
-    logger.error(f"Error in 3.4 check: {str(e)}")
-    results["3.4"] = {
-        "description": "Ensure CloudTrail integration with CloudWatch Logs is enabled.",
-        "result": f"Error occurred during check: {str(e)}",
-        "status": "ERROR"
-    }
-
-print("Performing Check for 3.5")
-try:
-    config_details = check_3_5_aws_config_all_regions()
+    config_details = check_3_3_aws_config_all_regions()
 
     non_configured_regions = [info for info in config_details if not info.get('recording')]
-    
-    results["3.5"] = {
+
+    results["3.3"] = {
         "description": "Ensure AWS Config is enabled in all regions.",
         "result": config_details,
-        "explanation": explanation_3_5,
+        "explanation": explanation_3_3,
         "status": "PASS" if not non_configured_regions else "FAIL"
     }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 3.5 check: {str(e)}")
-    results["3.5"] = {
+    logger.error(f"Error in 3.3 check: {str(e)}")
+    results["3.3"] = {
         "description": "Ensure AWS Config is enabled in all regions.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
 
-
-
-print("Performing Check for 3.6")
+print("Performing Check for 3.4")
 try:
-    logging_details = check_3_6_s3_bucket_logging()
+    logging_details = check_3_4_s3_bucket_logging()
 
     buckets_without_logging = [detail for detail in logging_details if not detail.get('LoggingEnabled', False) or "Error" in str(detail['LoggingEnabled'])]
 
     results["3.6"] = {
         "description": "Ensure S3 bucket logging is enabled.",
         "result": logging_details,
-        "explanation": explanation_3_6,
+        "explanation": explanation_3_4,
         "status": "PASS" if not buckets_without_logging else "FAIL"
     }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 3.6 check: {str(e)}")
-    results["3.6"] = {
+    logger.error(f"Error in 3.4 check: {str(e)}")
+    results["3.4"] = {
         "description": "Ensure S3 bucket logging is enabled.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
 
-
-
-print("Performing Check for 3.7")
+print("Performing Check for 3.5")
 try:
-    encryption_details = check_3_7_cloudtrail_kms_encryption()
-    
+    encryption_details = check_3_5_cloudtrail_kms_encryption()
     formatted_details = []
     for detail in encryption_details:
         formatted_details.append(f"Trail: {detail['TrailName']}, KmsKeyId: {detail['KmsKeyId']}")
@@ -2236,43 +2173,41 @@ try:
     results["3.7"] = {
         "description": "Ensure CloudTrail is encrypted with KMS CMKs.",
         "result": encryption_details,
-        "explanation": explanation_3_7,
+        "explanation": explanation_3_5,
         "status": "PASS" if not trails_without_kms_encryption else "FAIL"
     }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 3.7 check: {str(e)}")
-    results["3.7"] = {
+    logger.error(f"Error in 3.5 check: {str(e)}")
+    results["3.5"] = {
         "description": "Ensure CloudTrail is encrypted with KMS CMKs.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
 
-
-print("Performing Check for 3.8")
+print("Performing Check for 3.6")
 try:
-    rotation_details = check_3_8_kms_key_rotation()
+    rotation_details = check_3_6_kms_key_rotation()
     
     cmk_ids_without_rotation = [detail for detail in rotation_details if not detail.get('KeyRotationEnabled')]
     
-    results["3.8"] = {
+    results["3.6"] = {
         "description": "Ensure rotation for customer-created KMS keys is enabled.",
         "result": rotation_details,
-        "explanation": explanation_3_8,
+        "explanation": explanation_3_6,
         "status": "PASS" if not cmk_ids_without_rotation else "FAIL"
     }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 3.8 check: {str(e)}")
-    results["3.8"] = {
+    logger.error(f"Error in 3.6 check: {str(e)}")
+    results["3.6"] = {
         "description": "Ensure rotation for customer-created KMS keys is enabled.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
 
-
-print("Performing Check for 3.9")
-vpcs_without_logs = check_3_9_vpc_flow_logs()
+print("Performing Check for 3.7")
+vpcs_without_logs = check_3_7_vpc_flow_logs()
 
 if vpcs_without_logs:
     formatted_details = [{"VPC": vpc} for vpc in vpcs_without_logs]
@@ -2281,68 +2216,91 @@ else:
     formatted_details = "Flow logging is enabled for all VPCs"
     result_string = formatted_details
 
-results["3.9"] = {
+results["3.7"] = {
     "description": "Ensure VPC flow logging is enabled in all VPCs",
     "result": formatted_details,
-    "explanation": explanation_3_9,
+    "explanation": explanation_3_7,
     "status": "PASS" if not vpcs_without_logs else "FAIL"
 }
 write_results_to_file(results)
 
-
-print("Performing Check for 3.10")
+print("Performing Check for 3.8")
 try:
-    trail_details = check_3_10_object_level_logging()
+    trail_details = check_3_8_object_level_logging()
     non_compliant_trails = [detail for detail in trail_details if not detail.get('Compliant')]
     
     if non_compliant_trails:
-        results["3.10"] = {
+        results["3.8"] = {
             "description": "Ensure that object-level logging for write events is enabled for S3 buckets.",
             "result": non_compliant_trails,
-            "explanation": explanation_3_10,
+            "explanation": explanation_3_8,
             "status": "FAIL"
         }
     else:
-        results["3.10"] = {
+        results["3.8"] = {
             "description": "Object-level logging for write events is enabled for S3 buckets.",
             "result": trail_details,
-            "explanation": explanation_3_10,
+            "explanation": explanation_3_8,
             "status": "PASS"
         }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 3.10 check: {str(e)}")
-    results["3.10"] = {
+    logger.error(f"Error in 3.8 check: {str(e)}")
+    results["3.8"] = {
         "description": "Ensure that object-level logging for write events is enabled for S3 buckets.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
 
 
-print("Performing Check for 3.11")
+print("Performing Check for 3.9")
 try:
-    trail_details = check_3_11_object_level_logging_for_read_events()
+    trail_details = check_3_9_object_level_logging_for_read_events()
     non_compliant_trails = [detail for detail in trail_details if not detail.get('Compliant')]
 
     if non_compliant_trails:
-        results["3.11"] = {
+        results["3.9"] = {
             "description": "Ensure that object-level logging for read events is enabled for S3 buckets.",
             "result": non_compliant_trails,
-            "explanation": explanation_3_11,
+            "explanation": explanation_3_9,
             "status": "FAIL"
         }
     else:
-        results["3.11"] = {
+        results["3.9"] = {
             "description": "Object-level logging for read events is enabled for S3 buckets.",
             "result": trail_details,
-            "explanation": explanation_3_11,
+            "explanation": explanation_3_9,
             "status": "PASS"
         }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 3.11 check: {str(e)}")
-    results["3.11"] = {
+    logger.error(f"Error in 3.9 check: {str(e)}")
+    results["3.9"] = {
         "description": "Ensure that object-level logging for read events is enabled for S3 buckets.",
+        "result": f"Error occurred during check: {str(e)}",
+        "status": "ERROR"
+    }
+
+print("Performing Check for 4.1")
+try:
+    unauthorized_api_monitoring = check_4_1_unauthorized_api_calls_monitored()
+    if unauthorized_api_monitoring == "Account is compliant with CIS Benchmark 4.1.":
+        results["4.1"] = {
+            "description": "Ensure unauthorized API calls are monitored.",
+            "result": "Unauthorized API calls are monitored",
+            "status": "PASS"
+        }
+    else:
+        results["4.1"] = {
+            "description": "Ensure unauthorized API calls are monitored.",
+            "result": unauthorized_api_monitoring,
+            "status": "PASS"
+        }
+    write_results_to_file(results)
+except Exception as e:
+    logger.error(f"Error in 4.1 check: {str(e)}")
+    results["4.1"] = {
+        "description": "Ensure unauthorized API calls are monitored.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
@@ -2380,20 +2338,20 @@ except Exception as e:
         "status": "ERROR"
     }
 
-
-print("Performing Check for 5.1")
+print("Performing Check for 5.1.1")
 try:
-    nacl_violations = check_5_1_nacls_ingress_ports()
-    results["5.1"] = {
-        "description": "Ensure VPC Network ACLs do not allow ingress from 0.0.0.0/0 to TCP/UDP ports 22, 3389 or all protocols.",
-        "result": nacl_violations if nacl_violations else "No violating NACL entries found for ingress.",
-        "status": "PASS" if not nacl_violations else "FAIL"
+    non_compliant_regions = check_5_1_1_ebs_encryption_by_default()
+    results["5.1.1"] = {
+        "description": "Ensure EBS Volume Encryption is Enabled in all Regions.",
+        "result": non_compliant_regions if non_compliant_regions else "All regions have EBS encryption enabled by default.",
+        "explanation": explanation_5_1_1,
+        "status": "PASS" if not non_compliant_regions else "FAIL"
     }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 5.1 check: {str(e)}")
-    results["5.1"] = {
-        "description": "Ensure VPC Network ACLs do not allow ingress from 0.0.0.0/0 to TCP/UDP ports 22, 3389 or all protocols.",
+    logger.error(f"Error in 5.1.1 check: {str(e)}")
+    results["5.1.1"] = {
+        "description": "Ensure EBS Volume Encryption is Enabled in all Regions.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
@@ -2401,43 +2359,42 @@ except Exception as e:
 
 print("Performing Check for 5.2")
 try:
-    sg_violations = check_5_2_sgs_ingress_ports()
+    nacl_violations = check_5_2_nacls_ingress_ports()
+    results["5.2"] = {
+        "description": "Ensure VPC Network ACLs do not allow ingress from 0.0.0.0/0 to TCP/UDP ports 22, 3389 or all protocols.",
+        "result": nacl_violations if nacl_violations else "No violating NACL entries found for ingress.",
+        "status": "PASS" if not nacl_violations else "FAIL"
+    }
+    write_results_to_file(results)
+except Exception as e:
+    logger.error(f"Error in 5.2 check: {str(e)}")
+    results["5.2"] = {
+        "description": "Ensure VPC Network ACLs do not allow ingress from 0.0.0.0/0 to TCP/UDP ports 22, 3389 or all protocols.",
+        "result": f"Error occurred during check: {str(e)}",
+        "status": "ERROR"
+    }
+
+
+print("Performing Check for 5.3")
+try:
+    sg_violations = check_5_3_sgs_ingress_ports()
     if sg_violations:
-        results["5.2"] = {
+        results["5.3"] = {
             "description": "Ensure no security groups allow ingress from 0.0.0.0/0 to remote server administration ports.",
             "result": sg_violations,
             "status": "FAIL"
         }
     else:
-        results["5.2"] = {
+        results["5.3"] = {
             "description": "Ensure no security groups allow ingress from 0.0.0.0/0 to remote server administration ports.",
             "result": "No security groups violate this policy.",
             "status": "PASS"
         }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 5.2 check: {str(e)}")
-    results["5.2"] = {
-        "description": "Ensure no security groups allow ingress from 0.0.0.0/0 to remote server administration ports.",
-        "result": f"Error occurred during check: {str(e)}",
-        "status": "ERROR"
-    }
-
-
-
-print("Performing Check for 5.3")
-try:
-    sg_violations_ipv6 = check_5_3_sgs_ipv6_ingress_ports()
-    results["5.3"] = {
-        "description": "Ensure no security groups allow ingress from ::/0 to remote server administration ports (IPv6).",
-        "result": sg_violations_ipv6 if sg_violations_ipv6 else "No violating security groups found.",
-        "status": "PASS" if not sg_violations_ipv6 else "FAIL"
-    }
-    write_results_to_file(results)
-except Exception as e:
     logger.error(f"Error in 5.3 check: {str(e)}")
     results["5.3"] = {
-        "description": "Ensure no security groups allow ingress from ::/0 to remote server administration ports (IPv6).",
+        "description": "Ensure no security groups allow ingress from 0.0.0.0/0 to remote server administration ports.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
@@ -2446,25 +2403,17 @@ except Exception as e:
 
 print("Performing Check for 5.4")
 try:
-    default_sg_violations = check_5_4_default_sgs_restrict_all_traffic()
-    if default_sg_violations:
-        results["5.4"] = {
-            "description": "Ensure default security groups restrict all traffic.",
-            "result": default_sg_violations,
-            "explanation": explanation_5_4,
-            "status": "FAIL"
-        }
-    else:
-        results["5.4"] = {
-            "description": "Ensure default security groups restrict all traffic.",
-            "result": "All default security groups restrict all traffic.",
-            "status": "PASS"
-        }
+    sg_violations_ipv6 = check_5_4_sgs_ipv6_ingress_ports()
+    results["5.4"] = {
+        "description": "Ensure no security groups allow ingress from ::/0 to remote server administration ports (IPv6).",
+        "result": sg_violations_ipv6 if sg_violations_ipv6 else "No violating security groups found.",
+        "status": "PASS" if not sg_violations_ipv6 else "FAIL"
+    }
     write_results_to_file(results)
 except Exception as e:
     logger.error(f"Error in 5.4 check: {str(e)}")
     results["5.4"] = {
-        "description": "Ensure default security groups restrict all traffic.",
+        "description": "Ensure no security groups allow ingress from ::/0 to remote server administration ports (IPv6).",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
     }
@@ -2473,9 +2422,36 @@ except Exception as e:
 
 print("Performing Check for 5.5")
 try:
-    vpc_peering_violations = check_5_5_vpc_peering_least_access()
+    default_sg_violations = check_5_5_default_sgs_restrict_all_traffic()
+    if default_sg_violations:
+        results["5.5"] = {
+            "description": "Ensure default security groups restrict all traffic.",
+            "result": default_sg_violations,
+            "explanation": explanation_5_4,
+            "status": "FAIL"
+        }
+    else:
+        results["5.5"] = {
+            "description": "Ensure default security groups restrict all traffic.",
+            "result": "All default security groups restrict all traffic.",
+            "status": "PASS"
+        }
+    write_results_to_file(results)
+except Exception as e:
+    logger.error(f"Error in 5.5 check: {str(e)}")
     results["5.5"] = {
-        "description": "Ensure VPC peering connections do not allow traffic from any source.",
+        "description": "Ensure default security groups restrict all traffic.",
+        "result": f"Error occurred during check: {str(e)}",
+        "status": "ERROR"
+    }
+
+
+
+print("Performing Check for 5.6")
+try:
+    vpc_peering_violations = check_5_6_vpc_peering_least_access()
+    results["5.6"] = {
+        "description": "Ensure routing tables for VPC peering are \"least access\".",
         "result": vpc_peering_violations if vpc_peering_violations else "All VPC peering connections are secure.",
         "status": "PASS" if not vpc_peering_violations else "FAIL"
     }
@@ -2489,18 +2465,18 @@ except Exception as e:
     }
 
 
-print("Performing Check for 5.6")
+print("Performing Check for 5.7")
 try:
-    imds_violations = check_5_6_ec2_imdsv2_only()
-    results["5.6"] = {
+    imds_violations = check_5_7_ec2_imdsv2_only()
+    results["5.7"] = {
         "description": "Ensure EC2 instances use IMDSv2.",
         "result": imds_violations if imds_violations else "All EC2 instances use IMDSv2.",
         "status": "PASS" if not imds_violations else "FAIL"
     }
     write_results_to_file(results)
 except Exception as e:
-    logger.error(f"Error in 5.6 check: {str(e)}")
-    results["5.6"] = {
+    logger.error(f"Error in 5.7 check: {str(e)}")
+    results["5.7"] = {
         "description": "Ensure EC2 instances use IMDSv2.",
         "result": f"Error occurred during check: {str(e)}",
         "status": "ERROR"
