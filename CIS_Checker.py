@@ -2207,22 +2207,30 @@ except Exception as e:
     }
 
 print("Performing Check for 3.7")
-vpcs_without_logs = check_3_7_vpc_flow_logs()
+try:
+    vpcs_without_logs = check_3_7_vpc_flow_logs()
 
-if vpcs_without_logs:
-    formatted_details = [{"VPC": vpc} for vpc in vpcs_without_logs]
-    result_string = "Flow logging is not enabled for the following VPCs: " + ", ".join(vpcs_without_logs)
-else:
-    formatted_details = "Flow logging is enabled for all VPCs"
-    result_string = formatted_details
+    if vpcs_without_logs:
+        formatted_details = [{"VPC": vpc} for vpc in vpcs_without_logs]
+        result_string = "Flow logging is not enabled for the following VPCs: " + ", ".join(vpcs_without_logs)
+    else:
+        formatted_details = "Flow logging is enabled for all VPCs"
+        result_string = formatted_details
 
-results["3.7"] = {
-    "description": "Ensure VPC flow logging is enabled in all VPCs",
-    "result": formatted_details,
-    "explanation": explanation_3_7,
-    "status": "PASS" if not vpcs_without_logs else "FAIL"
-}
-write_results_to_file(results)
+    results["3.7"] = {
+        "description": "Ensure VPC flow logging is enabled in all VPCs",
+        "result": formatted_details,
+        "explanation": explanation_3_7,
+        "status": "PASS" if not vpcs_without_logs else "FAIL"
+    }
+    write_results_to_file(results)
+except Exception as e:
+    logger.error(f"Error in 3.7 check: {str(e)}")
+    results["3.7"] = {
+        "description": "Ensure that object-level logging for write events is enabled for S3 buckets.",
+        "result": f"Error occurred during check: {str(e)}",
+        "status": "ERROR"
+    }
 
 print("Performing Check for 3.8")
 try:
