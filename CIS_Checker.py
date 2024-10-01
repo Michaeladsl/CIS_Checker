@@ -1102,69 +1102,75 @@ def check_3_9_object_level_logging_for_read_events():
 
 # SKIPPED 4.x MONITOR SECTION
 
+import boto3
+
 def check_4_1_unauthorized_api_calls_monitored():
-    cloudtrail_client = boto3.client('cloudtrail')
-    logs_client = boto3.client('logs')
-    cloudwatch_client = boto3.client('cloudwatch')
-    sns_client = boto3.client('sns')
+    # List all AWS regions
+    regions = [region['RegionName'] for region in boto3.client('ec2').describe_regions()['Regions']]
+    
+    for region in regions:
+        cloudtrail_client = boto3.client('cloudtrail', region_name=region)
+        logs_client = boto3.client('logs', region_name=region)
+        cloudwatch_client = boto3.client('cloudwatch', region_name=region)
+        sns_client = boto3.client('sns', region_name=region)
 
-    # Step 1: List all CloudTrail trails and identify active multi-region trails
-    trails = cloudtrail_client.describe_trails()['trailList']
-    multi_region_trail = None
+        # Step 1: List all CloudTrail trails and identify active multi-region trails
+        trails = cloudtrail_client.describe_trails()['trailList']
+        multi_region_trail = None
 
-    for trail in trails:
-        if trail['IsMultiRegionTrail']:
-            trail_status = cloudtrail_client.get_trail_status(Name=trail['Name'])
-            if trail_status['IsLogging']:
-                multi_region_trail = trail
-                trail_log_group_name = multi_region_trail['CloudWatchLogsLogGroupArn'].split(':')[-1].split('*')[0]
+        for trail in trails:
+            if trail['IsMultiRegionTrail']:
+                trail_status = cloudtrail_client.get_trail_status(Name=trail['Name'])
+                if trail_status['IsLogging']:
+                    multi_region_trail = trail
+                    trail_log_group_name = multi_region_trail['CloudWatchLogsLogGroupArn'].split(':')[-1].split('*')[0]
+                    break
+
+        if not multi_region_trail:
+            continue  # No active multi-region trail in this region
+
+        # Step 2: Check event selectors for management events
+        event_selectors = cloudtrail_client.get_event_selectors(TrailName=multi_region_trail['Name'])
+        management_events = any(
+            selector.get('IncludeManagementEvents') and selector.get('ReadWriteType') == 'All'
+            for selector in event_selectors['EventSelectors']
+        )
+
+        if not management_events:
+            return f"No compliance in {region}: Multi-region CloudTrail trail does not capture all management events."
+
+        # Step 3: Describe metric filters
+        metric_filters = logs_client.describe_metric_filters(logGroupName=trail_log_group_name)['metricFilters']
+        unauthorized_metric_name = None
+
+        for filter in metric_filters:
+            if filter[
+                'filterPattern'] == '{ ($.errorCode ="*UnauthorizedOperation") || ($.errorCode ="AccessDenied*") && ($.sourceIPAddress!="delivery.logs.amazonaws.com") && ($.eventName!="HeadBucket") }':
+                unauthorized_metric_name = filter['metricTransformations'][0]['metricName']
                 break
 
-    if not multi_region_trail:
-        return "No active multi-region CloudTrail trail found."
+        if not unauthorized_metric_name:
+            return f"No compliance in {region}: Required metric filter for unauthorized API calls not found."
 
-    # Step 2: Check event selectors for management events
-    event_selectors = cloudtrail_client.get_event_selectors(TrailName=multi_region_trail['Name'])
-    management_events = any(
-        selector.get('IncludeManagementEvents') and selector.get('ReadWriteType') == 'All'
-        for selector in event_selectors['EventSelectors']
-    )
+        # Step 4: Describe CloudWatch alarms for the unauthorized API calls metric
+        alarms = cloudwatch_client.describe_alarms(MetricName=unauthorized_metric_name)['MetricAlarms']
+        sns_topic_arn = None
 
-    if not management_events:
-        return "Multi-region CloudTrail trail does not capture all management events."
-
-    # Step 3: Describe metric filters
-    metric_filters = logs_client.describe_metric_filters(logGroupName=trail_log_group_name)['metricFilters']
-    unauthorized_metric_name = None
-
-    for filter in metric_filters:
-        if filter[
-            'filterPattern'] == '{ ($.errorCode ="*UnauthorizedOperation") || ($.errorCode ="AccessDenied*") && ($.sourceIPAddress!="delivery.logs.amazonaws.com") && ($.eventName!="HeadBucket") }':
-            unauthorized_metric_name = filter['metricTransformations'][0]['metricName']
+        for alarm in alarms:
+            sns_topic_arn = alarm['AlarmActions'][0] if alarm['AlarmActions'] else None
             break
 
-    if not unauthorized_metric_name:
-        return "Required metric filter for unauthorized API calls not found."
+        if not sns_topic_arn:
+            return f"No compliance in {region}: No CloudWatch alarms found for unauthorized API calls metric."
 
-    # Step 4: Describe CloudWatch alarms for the unauthorized API calls metric
-    alarms = cloudwatch_client.describe_alarms(MetricName=unauthorized_metric_name)['MetricAlarms']
-    sns_topic_arn = None
+        # Step 5: Ensure there is at least one active subscriber to the SNS topic
+        subscriptions = sns_client.list_subscriptions_by_topic(TopicArn=sns_topic_arn)['Subscriptions']
+        valid_subscription = any(sub['SubscriptionArn'] for sub in subscriptions)
 
-    for alarm in alarms:
-        sns_topic_arn = alarm['AlarmActions'][0] if alarm['AlarmActions'] else None
-        break
+        if not valid_subscription:
+            return f"No compliance in {region}: No active subscribers found for the SNS topic."
 
-    if not sns_topic_arn:
-        return "No CloudWatch alarms found for unauthorized API calls metric."
-
-    # Step 5: Ensure there is at least one active subscriber to the SNS topic
-    subscriptions = sns_client.list_subscriptions_by_topic(TopicArn=sns_topic_arn)['Subscriptions']
-    valid_subscription = any(sub['SubscriptionArn'] for sub in subscriptions)
-
-    if not valid_subscription:
-        return "No active subscribers found for the SNS topic."
-
-    return "Account is compliant with CIS Benchmark 4.1."
+    return "Account is compliant with CIS Benchmark 4.1 across all regions."
 
 
 def check_4_16_security_hub_enabled():
