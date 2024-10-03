@@ -2511,7 +2511,7 @@ def move_to_output(src_path, dest_directory):
         dest_path = os.path.join(dest_directory, os.path.basename(src_path))
         shutil.move(src_path, dest_path)
 
-profile_name = sys.argv[1] if len(sys.argv) > 1 else "AWSResults"
+profile_name = args.profile if args.profile != 'default' > 1 else "AWSResults"
 output_directory = os.path.join(os.getcwd(), profile_name)
 
 if not os.path.exists(output_directory):
