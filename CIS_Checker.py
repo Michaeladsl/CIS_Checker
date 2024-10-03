@@ -25,11 +25,23 @@ from webdriver_manager.firefox import GeckoDriverManager
 
 parser = argparse.ArgumentParser(description="AWS CIS Benchmark Checker")
 parser.add_argument('--profile', default='default', help='Specify the AWS profile to use (default: "default")')
+parser.add_argument('--regions', type=str, help='Comma-separated list of AWS regions.')
 args = parser.parse_args()
 
 profile_name = args.profile
 
 session = boto3.Session(profile_name=profile_name)
+
+if args.regions:
+    REGIONS = args.regions.split(',')
+else:
+    try:
+        REGIONS = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
+    except botocore.exceptions.ClientError as e:
+        print(f"Error fetching AWS regions: {e}")
+        REGIONS = []
+
+
 
 
 '''# Old Argparse, no --profile
@@ -560,15 +572,9 @@ def check_1_20_aws_access_analyzer_all_regions():
     sts_client = session.client('sts')
     account_id = sts_client.get_caller_identity()["Account"]
 
-    try:
-        regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
-    except botocore.exceptions.ClientError as e:
-        print(f"Error fetching AWS regions: {e}")
-        return []
-
     analyzer_violations = []
 
-    for region in regions:
+    for region in REGIONS:
         access_analyzer_client = session.client('accessanalyzer', region_name=region)
         paginator = access_analyzer_client.get_paginator('list_analyzers')
 
@@ -774,12 +780,9 @@ rds = session.client('rds')
 
 
 def check_2_2_1_rds_encryption_at_rest():
-    ec2_client = session.client('ec2')
-    regions = [region['RegionName'] for region in ec2_client.describe_regions()['Regions']]
-    
     unencrypted_rds_details = []
     
-    for region in regions:
+    for region in REGIONS:
         region_rds_client = session.client('rds', region_name=region)
         paginator = region_rds_client.get_paginator('describe_db_instances')
 
@@ -797,13 +800,10 @@ def check_2_2_1_rds_encryption_at_rest():
 
 
 def check_2_2_2_rds_auto_minor_upgrade():
-    ec2_client = session.client('ec2')
     rds_client = session.client('rds')
-
-    regions = [region['RegionName'] for region in ec2_client.describe_regions()['Regions']]
     non_compliant_details = []
 
-    for region in regions:
+    for region in REGIONS:
         regional_rds_client = session.client('rds', region_name=region)
         paginator = regional_rds_client.get_paginator('describe_db_instances')
         for page in paginator.paginate():
@@ -820,12 +820,9 @@ def check_2_2_2_rds_auto_minor_upgrade():
 
 
 def check_2_2_3_rds_public_access():
-    ec2_client = session.client('ec2')
-    regions = [region['RegionName'] for region in ec2_client.describe_regions()['Regions']]
-
     public_access_rds_instances = []
 
-    for region in regions:
+    for region in REGIONS:
         region_rds_client = session.client('rds', region_name=region)
         paginator = region_rds_client.get_paginator('describe_db_instances')
 
@@ -843,11 +840,10 @@ def check_2_2_3_rds_public_access():
 
 def check_2_3_1_efs_encryption():
     efs_client = session.client('efs')
-    regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
     
     unencrypted_file_systems = {}
 
-    for region in regions:
+    for region in REGIONS:
         region_efs_client = session.client('efs', region_name=region)
 
         try:
@@ -871,11 +867,10 @@ def check_2_3_1_efs_encryption():
 
 def check_3_1_cloudtrail_all_regions():
     cloudtrail_client = session.client('cloudtrail')
-    regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
     
     regions_without_cloudtrail = []
     
-    for region in regions:
+    for region in REGIONS:
         region_cloudtrail_client = session.client('cloudtrail', region_name=region)
         
         try:
@@ -915,10 +910,9 @@ def check_3_2_cloudtrail_log_file_validation():
 
 def check_3_3_aws_config_all_regions():
     client = session.client('config')
-    regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
     
     region_statuses = []
-    for region in regions:
+    for region in REGIONS:
         region_client = session.client('config', region_name=region)
         try:
             status = region_client.describe_configuration_recorders()['ConfigurationRecorders'][0]['recording']
@@ -1102,13 +1096,8 @@ def check_3_9_object_level_logging_for_read_events():
 
 # SKIPPED 4.x MONITOR SECTION
 
-import boto3
-
 def check_4_1_unauthorized_api_calls_monitored():
-    # List all AWS regions
-    regions = [region['RegionName'] for region in boto3.client('ec2').describe_regions()['Regions']]
-    
-    for region in regions:
+    for region in REGIONS:
         cloudtrail_client = boto3.client('cloudtrail', region_name=region)
         logs_client = boto3.client('logs', region_name=region)
         cloudwatch_client = boto3.client('cloudwatch', region_name=region)
@@ -1119,7 +1108,7 @@ def check_4_1_unauthorized_api_calls_monitored():
         multi_region_trail = None
 
         for trail in trails:
-            if trail['IsMultiRegionTrail']:
+            if trail['IsMultiRegionTrail'] and region == trail['HomeRegion']:
                 trail_status = cloudtrail_client.get_trail_status(Name=trail['Name'])
                 if trail_status['IsLogging']:
                     multi_region_trail = trail
@@ -1187,10 +1176,9 @@ def check_4_16_security_hub_enabled():
 
 
 def check_5_1_1_ebs_encryption_by_default():
-    ec2_regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
     non_compliant_regions = []
 
-    for region in ec2_regions:
+    for region in REGIONS:
         ec2_client = session.client('ec2', region_name=region)
         try:
             response = ec2_client.get_ebs_encryption_by_default()
@@ -2308,7 +2296,7 @@ try:
         results["4.1"] = {
             "description": "Ensure unauthorized API calls are monitored.",
             "result": unauthorized_api_monitoring,
-            "status": "PASS"
+            "status": "FAIL"
         }
     write_results_to_file(results)
 except Exception as e:
@@ -2540,5 +2528,4 @@ for item in items_to_move:
 
 print(" ")
 print("CIS Check Complete")
-
 
