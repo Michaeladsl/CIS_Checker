@@ -1,6 +1,6 @@
 # CIS_Checker
 
-CIS_Checker automates the process of evaluating the compliance of AWS environments against the latest CIS 2.0.0 benchmarks.
+CIS_Checker automates the process of evaluating the compliance of AWS environments against the latest CIS 4.0.0 benchmarks.
 
 ## Key Features:
 ***Automated Compliance Checks:*** Automatically evaluates various AWS resources against best practices.
@@ -23,7 +23,7 @@ CIS_Checker automates the process of evaluating the compliance of AWS environmen
 
 
 ```
-python CIS_Checker.py [--profile PROFILE_NAME]
+python CIS_Checker.py [--profile PROFILE_NAME] [--check "1.8,1.4"] [--html-only]
 ```
 
 The tool will perform a series of compliance checks and generate a report outlining the compliance status of the AWS resources. Screenshots of non-compliant items and detailed JSON and HTML reports are saved for further analysis and record-keeping.
