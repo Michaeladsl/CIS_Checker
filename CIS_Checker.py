@@ -12,6 +12,7 @@ import os
 import sys
 import io
 import shutil
+import requests
 from tqdm import tqdm
 from PIL import Image
 from io import BytesIO
@@ -21,6 +22,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.firefox import GeckoDriverManager
+
 
 
 parser = argparse.ArgumentParser(description="Run AWS security compliance checks.")
