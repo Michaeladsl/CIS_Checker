@@ -2662,6 +2662,7 @@ def main():
     if args.html_only:
         if os.path.exists("results.json"):
             with open("results.json", "r") as f:
+                results = {}
                 results = json.load(f)
             # Regenerate HTML from existing results.json
             html_data = generate_html(results)
