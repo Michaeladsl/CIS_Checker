@@ -1,5 +1,5 @@
 #!/bin/python3
-# CIS 2.0.0 Check for AWS
+# CIS 4.0.0 Check for AWS
 # Author: Michael Raines
 
 import boto3
@@ -30,6 +30,7 @@ parser.add_argument("--check", help="Specify the check to run, e.g., 1.4.")
 parser.add_argument("--profile", default="default", help="Specify the AWS profile to use (default: 'default').")
 parser.add_argument("--regions", type=str, help="Comma-separated list of AWS regions.")
 parser.add_argument("--html-only", action="store_true", help="Regenerate the HTML report without running checks.")
+parser.add_argument("--screenshot", action="store_true", help="Capture screenshots after generating HTML report.")
 args = parser.parse_args()
 
 profile_name = args.profile
@@ -96,25 +97,25 @@ def write_results_to_file(results):
 
 
 
-explanation_1_4 = "The root account should not have any access keys associated with it."
-explanation_1_5 = "If AccountMFAEnabled contains a value of 0, MFA is not enabled for the root user."
-explanation_1_6 = "If VirtualMFA contains ARN with the name 'root' in it, virtual MFA is used."
-explanation_1_7 = "There is no described time to be under but is set to fail if the root user has been used within 90 days."
-explanation_1_8 = "MinimumPasswordLength should be 14 or greater."
-explanation_1_9 = "PasswordReusePrevention should be 24 or higher."
-explanation_1_10 = "If HasConsolePassword is true, MFAActive must also be true."
-explanation_1_11 = "If AccessKeyLastUsedDate is null, the key may have been created at the same time as the account."
-explanation_1_12 = "Users where LastUsedDate has a value of 45 days or greater should be disabled."
-explanation_1_13 = "Users should only have one active access key."
-explanation_1_14 = "CreateDate should not contain a value greater than 90 days."
-explanation_1_15 = "Users should not have attached policies."
-explanation_1_16 = "Users should follow the concept of least privilege and should not receive full admin privileges"
-explanation_1_17 = "If PolicyRoles returns an empty value, a role has not been set."
-explanation_1_18 = "An IAM instance role should be applied to every instance."
-explanation_1_19 = "Expired certificates should be removed from IAM to avoid accidental use."
-explanation_1_20 = "Access Analyzer should be enabled in all regions."
-explanation_1_21 = "IAM users should be managed through an identity provider."
-explanation_1_22 = "Roles_With_AWSCloudShellFullAccess should be empty to ensure users do not have full access to cloud shell."
+explanation_1_3 = "The root account should not have any access keys associated with it."
+explanation_1_4 = "If AccountMFAEnabled contains a value of 0, MFA is not enabled for the root user."
+explanation_1_5 = "If VirtualMFA contains ARN with the name 'root' in it, virtual MFA is used."
+explanation_1_6 = "There is no described time to be under but is set to fail if the root user has been used within 90 days."
+explanation_1_7 = "MinimumPasswordLength should be 14 or greater."
+explanation_1_8 = "PasswordReusePrevention should be 24 or higher."
+explanation_1_9 = "If HasConsolePassword is true, MFAActive must also be true."
+explanation_1_10 = "If AccessKeyLastUsedDate is null, the key may have been created at the same time as the account."
+explanation_1_11 = "Users where LastUsedDate has a value of 45 days or greater should be disabled."
+explanation_1_12 = "Users should only have one active access key."
+explanation_1_13 = "CreateDate should not contain a value greater than 90 days."
+explanation_1_14 = "Users should not have attached policies."
+explanation_1_15 = "Users should follow the concept of least privilege and should not receive full admin privileges"
+explanation_1_16 = "If PolicyRoles returns an empty value, a role has not been set."
+explanation_1_17 = "An IAM instance role should be applied to every instance."
+explanation_1_18 = "Expired certificates should be removed from IAM to avoid accidental use."
+explanation_1_19 = "Access Analyzer should be enabled in all regions."
+explanation_1_20 = "IAM users should be managed through an identity provider."
+explanation_1_21 = "Roles_With_AWSCloudShellFullAccess should be empty to ensure users do not have full access to cloud shell."
 explanation_2_1_1 = "Effect should be set to deny and aws:SecureTransport should be false."
 explanation_2_1_2 = "MFADelete should be enabled for all S3 buckets."
 explanation_2_1_4 = "A public access block should be present and not set to false."
@@ -145,7 +146,7 @@ explanation_5_7 = ""
 
 iam = session.client('iam')
 
-def check_root_access_keys_and_update_results(session, results, explanation_1_4):
+def check_root_access_keys_and_update_results(session, results, explanation_1_3):
     """
     Checks for root access keys and updates the results dictionary.
     """
@@ -154,20 +155,20 @@ def check_root_access_keys_and_update_results(session, results, explanation_1_4)
     keys_present = account_summary.get('SummaryMap', {}).get('AccountAccessKeysPresent', 0)
 
     if keys_present:
-        results["1.4"] = {
+        results["1.3"] = {
             "description": "Ensure no 'root' user account access key exists",
             "result": {
                 "message": "Root access keys detected!",
                 "AccountAccessKeysPresent": keys_present
             },
-            "explanation": explanation_1_4,
+            "explanation": explanation_1_3,
             "status": "FAIL"
         }
     else:
-        results["1.4"] = {
+        results["1.3"] = {
             "description": "Ensure no 'root' user account access key exists",
             "result": "No root access keys found.",
-            "explanation": explanation_1_4,
+            "explanation": explanation_1_3,
             "status": "PASS"
         }
 
@@ -175,19 +176,19 @@ def check_root_access_keys_and_update_results(session, results, explanation_1_4)
 
 
 
-def check_root_user_mfa(session, results, explanation_1_5):
+def check_root_user_mfa(session, results, explanation_1_4):
 
     iam_client = session.client('iam')
     account_summary = iam_client.get_account_summary()
     mfa_enabled_value = account_summary['SummaryMap']['AccountMFAEnabled']
 
-    results["1.5"] = {
+    results["1.4"] = {
         "description": "Ensure MFA is enabled for the 'root' user account",
         "result": {
             "AccountMFAEnabled": mfa_enabled_value,
             "message": "MFA is enabled for the root user account." if mfa_enabled_value == 1 else "MFA is not enabled for the root user account!"
         },
-        "explanation": explanation_1_5,
+        "explanation": explanation_1_4,
         "status": "PASS" if mfa_enabled_value == 1 else "FAIL"
     }
 
@@ -205,7 +206,7 @@ def check_root_virtual_mfa(session, results):
         virtual_mfas = iam_client.list_virtual_mfa_devices()
         root_has_mfa = any('root' in mfa['SerialNumber'] for mfa in virtual_mfas.get('VirtualMFADevices', []))
 
-        results["1.6"] = {
+        results["1.5"] = {
             "description": "Ensure hardware MFA is enabled for the 'root' user account",
             "result": {
                 "root_has_mfa": root_has_mfa,
@@ -216,7 +217,7 @@ def check_root_virtual_mfa(session, results):
 
     except Exception as e:
         logger.error(f"Error in Root Virtual MFA check: {str(e)}")
-        results["1.6"] = {
+        results["1.5"] = {
             "description": "Ensure hardware MFA is enabled for the 'root' user account",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -227,7 +228,7 @@ def check_root_virtual_mfa(session, results):
 
 
 
-def check_root_user_last_activity_and_update_results(session, results, explanation_1_7):
+def check_root_user_last_activity_and_update_results(session, results, explanation_1_6):
     """
     Checks the last activity of the root user and updates the results dictionary.
     """
@@ -262,17 +263,17 @@ def check_root_user_last_activity_and_update_results(session, results, explanati
         root_user_activity["Error"] = str(e)
         status = "ERROR"
 
-    results["1.7"] = {
+    results["1.6"] = {
         "description": "Eliminate use of the 'root' user for administrative and daily tasks",
         "result": root_user_activity,
-        "explanation": explanation_1_7,
+        "explanation": explanation_1_6,
         "status": status
     }
 
     write_results_to_file(results)
 
 
-def check_password_policy_and_update_results(session, results, explanation_1_8):
+def check_password_policy_and_update_results(session, results, explanation_1_7):
     """
     Checks the IAM password policy minimum length and updates the results dictionary.
     """
@@ -289,10 +290,10 @@ def check_password_policy_and_update_results(session, results, explanation_1_8):
         print(f"Error fetching password policy details: {str(e)}")
         password_policy_details = {"Error": str(e)}
 
-    results["1.8"] = {
+    results["1.7"] = {
         "description": "Ensure IAM password policy requires minimum length of 14 or greater",
         "result": password_policy_details,
-        "explanation": explanation_1_8,
+        "explanation": explanation_1_7,
         "status": "PASS" if password_policy_details and password_policy_details.get("MinimumPasswordLength", 0) >= 14 else "FAIL"
     }
 
@@ -301,7 +302,7 @@ def check_password_policy_and_update_results(session, results, explanation_1_8):
 
 
 
-def check_password_reuse_prevention_and_update_results(session, results, explanation_1_9):
+def check_password_reuse_prevention_and_update_results(session, results, explanation_1_8):
     """
     Checks IAM password policy for password reuse prevention and updates the results dictionary.
     """
@@ -312,26 +313,26 @@ def check_password_reuse_prevention_and_update_results(session, results, explana
         password_policy = response.get('PasswordPolicy', {})
         reuse_prevention_value = password_policy.get('PasswordReusePrevention', 0)
 
-        results["1.9"] = {
+        results["1.8"] = {
             "description": "Ensure IAM password policy prevents password reuse.",
             "result": password_policy,
-            "explanation": explanation_1_9,
+            "explanation": explanation_1_8,
             "status": "PASS" if reuse_prevention_value and reuse_prevention_value >= 24 else "FAIL"
         }
 
     except Exception as e:
         logger.error(f"Error in 1.9 check: {str(e)}")
-        results["1.9"] = {
+        results["1.8"] = {
             "description": "Ensure IAM password policy prevents password reuse.",
             "result": f"Error occurred during check: {str(e)}",
-            "explanation": explanation_1_9,
+            "explanation": explanation_1_8,
             "status": "ERROR"
         }
 
     write_results_to_file(results)
 
 
-def check_mfa_on_users_and_update_results(session, results, explanation_1_10):
+def check_mfa_on_users_and_update_results(session, results, explanation_1_9):
     """
     Checks if MFA is enabled for all IAM users with console access and updates the results dictionary.
     """
@@ -362,19 +363,19 @@ def check_mfa_on_users_and_update_results(session, results, explanation_1_10):
                         "MFAActive": mfa_active
                     })
 
-        results["1.10"] = {
+        results["1.9"] = {
             "description": "Ensure multi-factor authentication (MFA) is enabled for all IAM users that have a console password",
             "result": non_compliant_users,
-            "explanation": explanation_1_10,
+            "explanation": explanation_1_9,
             "status": "PASS" if not non_compliant_users else "FAIL"
         }
 
     except Exception as e:
         logger.error(f"Error in 1.10 check: {str(e)}")
-        results["1.10"] = {
+        results["1.9"] = {
             "description": "Ensure multi-factor authentication (MFA) is enabled for all IAM users that have a console password",
             "result": f"Error occurred during check: {str(e)}",
-            "explanation": explanation_1_10,
+            "explanation": explanation_1_9,
             "status": "ERROR"
         }
 
@@ -382,7 +383,7 @@ def check_mfa_on_users_and_update_results(session, results, explanation_1_10):
 
 
 
-def check_initial_user_setup_violations_and_update_results(session, results, explanation_1_11):
+def check_initial_user_setup_violations_and_update_results(session, results, explanation_1_10):
     """
     Checks for violations of access key setups during initial user creation and updates the results dictionary.
     """
@@ -418,16 +419,16 @@ def check_initial_user_setup_violations_and_update_results(session, results, exp
                                 "AccessKeyLastUsedDate": None
                             })
 
-        results["1.11"] = {
+        results["1.10"] = {
             "description": "Do not setup access keys during initial user setup for all IAM users that have a console password",
             "result": violating_users if violating_users else "All users comply.",
-            "explanation": explanation_1_11,
+            "explanation": explanation_1_10,
             "status": "PASS" if not violating_users else "FAIL"
         }
 
     except Exception as e:
         logger.error(f"Error in 1.11 check: {str(e)}")
-        results["1.11"] = {
+        results["1.10"] = {
             "description": "Do not setup access keys during initial user setup for all IAM users that have a console password",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -438,7 +439,7 @@ def check_initial_user_setup_violations_and_update_results(session, results, exp
 
 
 
-def check_credentials_unused_and_update_results(session, results, explanation_1_12):
+def check_credentials_unused_and_update_results(session, results, explanation_1_11):
     """
     Checks for IAM credentials unused for 45 days or more and updates the results dictionary.
     """
@@ -464,16 +465,16 @@ def check_credentials_unused_and_update_results(session, results, explanation_1_
                     })
                     break  # Stop checking other keys for this user
 
-        results["1.12"] = {
+        results["1.11"] = {
             "description": "Ensure credentials unused for 45 days or greater are disabled",
             "result": non_compliant_users,
-            "explanation": explanation_1_12,
+            "explanation": explanation_1_11,
             "status": "PASS" if not non_compliant_users else "FAIL"
         }
 
     except Exception as e:
         logger.error(f"Error in 1.12 check: {str(e)}")
-        results["1.12"] = {
+        results["1.11"] = {
             "description": "Ensure credentials unused for 45 days or greater are disabled",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -483,7 +484,7 @@ def check_credentials_unused_and_update_results(session, results, explanation_1_
 
 
 
-def check_single_active_access_key_and_update_results(session, results, explanation_1_13):
+def check_single_active_access_key_and_update_results(session, results, explanation_1_12):
     """
     Checks that there is only one active access key for each IAM user and updates the results dictionary.
     """
@@ -503,16 +504,16 @@ def check_single_active_access_key_and_update_results(session, results, explanat
                     "AccessKeyIds": active_keys
                 })
 
-        results["1.13"] = {
+        results["1.12"] = {
             "description": "Ensure there is only one active access key available for any single IAM user",
             "result": non_compliant_users,
-            "explanation": explanation_1_13,
+            "explanation": explanation_1_12,
             "status": "PASS" if not non_compliant_users else "FAIL"
         }
 
     except Exception as e:
         logger.error(f"Error in 1.13 check: {str(e)}")
-        results["1.13"] = {
+        results["1.12"] = {
             "description": "Ensure there is only one active access key available for any single IAM user",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -522,7 +523,7 @@ def check_single_active_access_key_and_update_results(session, results, explanat
 
 
 
-def check_access_key_rotation_and_update_results(session, results, explanation_1_14):
+def check_access_key_rotation_and_update_results(session, results, explanation_1_13):
     """
     Checks that IAM access keys are rotated every 90 days or less and updates the results dictionary.
     """
@@ -544,16 +545,16 @@ def check_access_key_rotation_and_update_results(session, results, explanation_1
                         "CreateDate": key['CreateDate'].strftime('%Y-%m-%d %H:%M:%S UTC')
                     })
 
-        results["1.14"] = {
+        results["1.13"] = {
             "description": "Ensure access keys are rotated every 90 days or less",
             "result": non_compliant_keys,
-            "explanation": explanation_1_14,
+            "explanation": explanation_1_13,
             "status": "PASS" if not non_compliant_keys else "FAIL"
         }
 
     except Exception as e:
         logger.error(f"Error in 1.14 check: {str(e)}")
-        results["1.14"] = {
+        results["1.13"] = {
             "description": "Ensure access keys are rotated every 90 days or less",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -563,7 +564,7 @@ def check_access_key_rotation_and_update_results(session, results, explanation_1
 
 
 
-def check_permissions_through_groups_and_update_results(session, results, explanation_1_15):
+def check_permissions_through_groups_and_update_results(session, results, explanation_1_14):
     """
     Checks that IAM users receive permissions only through groups and updates the results dictionary.
     """
@@ -584,16 +585,16 @@ def check_permissions_through_groups_and_update_results(session, results, explan
                     "InlinePolicies": inline_policies
                 })
 
-        results["1.15"] = {
+        results["1.14"] = {
             "description": "Ensure IAM Users Receive Permissions Only Through Groups",
             "result": non_compliant_users,
-            "explanation": explanation_1_15,
+            "explanation": explanation_1_14,
             "status": "PASS" if not non_compliant_users else "FAIL"
         }
 
     except Exception as e:
         logger.error(f"Error in 1.15 check: {str(e)}")
-        results["1.15"] = {
+        results["1.14"] = {
             "description": "Ensure IAM Users Receive Permissions Only Through Groups",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -602,7 +603,7 @@ def check_permissions_through_groups_and_update_results(session, results, explan
     write_results_to_file(results)
 
 
-def check_no_full_admin_policies_and_update_results(session, results, explanation_1_16):
+def check_no_full_admin_policies_and_update_results(session, results, explanation_1_15):
     """
     Checks for policies that grant full administrative privileges and updates the results dictionary.
     """
@@ -641,16 +642,16 @@ def check_no_full_admin_policies_and_update_results(session, results, explanatio
                             })
                             break
 
-        results["1.16"] = {
+        results["1.15"] = {
             "description": "Ensure no policies grant full administrative privileges.",
             "result": full_admin_policies if full_admin_policies else "No policies found with full administrative privileges.",
-            "explanation": explanation_1_16,
+            "explanation": explanation_1_15,
             "status": "PASS" if not full_admin_policies else "FAIL"
         }
 
     except Exception as e:
-        logger.error(f"Error in 1.16 check: {str(e)}")
-        results["1.16"] = {
+        logger.error(f"Error in 1.15 check: {str(e)}")
+        results["1.15"] = {
             "description": "Ensure no policies grant full administrative privileges.",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -663,7 +664,7 @@ def check_no_full_admin_policies_and_update_results(session, results, explanatio
 
 
 
-''' # WITHOUT PAG
+""" # WITHOUT PAG
 def check_1_16_no_full_admin_policies():
     client = session.client('iam')
     policies = client.list_policies(Scope='All')
@@ -701,14 +702,7 @@ def check_1_16_no_full_admin_policies():
                     break 
 
     return full_admin_policies
-'''
-
-
-
-
-
-
-
+"""
 
 
 
@@ -748,7 +742,7 @@ def check_support_role_with_policy():
 
 
 
-def check_support_role_with_policy_and_update_results(session, results, explanation_1_17):
+def check_support_role_with_policy_and_update_results(session, results, explanation_1_16):
     """
     Checks for a support role with the 'AWSSupportAccess' policy and updates the results dictionary.
     """
@@ -759,7 +753,7 @@ def check_support_role_with_policy_and_update_results(session, results, explanat
         for policy in aws_policies:
             if policy['PolicyName'] == 'AWSSupportAccess':
                 entities = client.list_entities_for_policy(PolicyArn=policy['Arn'])
-                results["1.17"] = {
+                results["1.16"] = {
                     "description": "Ensure a support role has been created to manage incidents with AWS Support",
                     "result": {
                         "PolicyName": policy['PolicyName'],
@@ -769,7 +763,7 @@ def check_support_role_with_policy_and_update_results(session, results, explanat
                         "PolicyUsers": [user['UserName'] for user in entities.get('PolicyUsers', [])],
                         "PolicyGroups": [group['GroupName'] for group in entities.get('PolicyGroups', [])]
                     },
-                    "explanation": explanation_1_17,
+                    "explanation": explanation_1_16,
                     "status": "PASS" if entities.get('PolicyRoles') else "FAIL"
                 }
                 write_results_to_file(results)
@@ -779,7 +773,7 @@ def check_support_role_with_policy_and_update_results(session, results, explanat
         for policy in local_policies:
             if policy['PolicyName'] == 'AWSSupportAccess':
                 entities = client.list_entities_for_policy(PolicyArn=policy['Arn'])
-                results["1.17"] = {
+                results["1.16"] = {
                     "description": "Ensure a support role has been created to manage incidents with AWS Support",
                     "result": {
                         "PolicyName": policy['PolicyName'],
@@ -789,23 +783,23 @@ def check_support_role_with_policy_and_update_results(session, results, explanat
                         "PolicyUsers": [user['UserName'] for user in entities.get('PolicyUsers', [])],
                         "PolicyGroups": [group['GroupName'] for group in entities.get('PolicyGroups', [])]
                     },
-                    "explanation": explanation_1_17,
+                    "explanation": explanation_1_16,
                     "status": "PASS" if entities.get('PolicyRoles') else "FAIL"
                 }
                 write_results_to_file(results)
                 return
 
-        results["1.17"] = {
+        results["1.16"] = {
             "description": "Ensure a support role has been created to manage incidents with AWS Support",
             "result": "AWSSupportAccess policy not found.",
-            "explanation": explanation_1_17,
+            "explanation": explanation_1_16,
             "status": "FAIL"
         }
         write_results_to_file(results)
 
     except Exception as e:
         logger.error(f"Error during check 1.17: {str(e)}")
-        results["1.17"] = {
+        results["1.16"] = {
             "description": "Ensure a support role has been created to manage incidents with AWS Support",
             "result": f"Error during check: {str(e)}",
             "status": "ERROR"
@@ -849,7 +843,7 @@ def check_iam_instance_roles_and_update_results(session, results):
 
         instances_without_roles = [detail for detail in instance_details if detail['IAMRole'] == "No IAM Role"]
 
-        results["1.18"] = {
+        results["1.17"] = {
             "description": "Ensure IAM instance roles are used for AWS resource access from instances",
             "result": instances_without_roles,
             "status": "PASS" if not instances_without_roles else "FAIL"
@@ -858,7 +852,7 @@ def check_iam_instance_roles_and_update_results(session, results):
 
     except Exception as e:
         logger.error(f"Error during check 1.18: {str(e)}")
-        results["1.18"] = {
+        results["1.17"] = {
             "description": "Ensure IAM instance roles are used for AWS resource access from instances",
             "result": f"Error occurred: {str(e)}",
             "status": "ERROR"
@@ -868,7 +862,7 @@ def check_iam_instance_roles_and_update_results(session, results):
 
 
 
-def check_expired_ssl_certificates_and_update_results(session, results, explanation_1_19):
+def check_expired_ssl_certificates_and_update_results(session, results, explanation_1_18):
     """
     Checks for expired SSL/TLS certificates stored in AWS IAM and updates the results dictionary.
     """
@@ -889,17 +883,17 @@ def check_expired_ssl_certificates_and_update_results(session, results, explanat
                     "Expiration": expiration_date
                 })
 
-        results["1.19"] = {
+        results["1.18"] = {
             "description": "Ensure that all the expired SSL/TLS certificates stored in AWS IAM are removed",
             "result": expired_certificates,
-            "explanation": explanation_1_19,
+            "explanation": explanation_1_18,
             "status": "PASS" if not expired_certificates else "FAIL"
         }
         write_results_to_file(results)
 
     except Exception as e:
-        logger.error(f"Error during check 1.19: {str(e)}")
-        results["1.19"] = {
+        logger.error(f"Error during check 1.18: {str(e)}")
+        results["1.18"] = {
             "description": "Ensure that all the expired SSL/TLS certificates stored in AWS IAM are removed",
             "result": f"Error occurred: {str(e)}",
             "status": "ERROR"
@@ -909,7 +903,7 @@ def check_expired_ssl_certificates_and_update_results(session, results, explanat
 
 
 
-def check_access_analyzer_all_regions_and_update_results(session, results, explanation_1_20, regions):
+def check_access_analyzer_all_regions_and_update_results(session, results, explanation_1_19, regions):
     """
     Checks for AWS Access Analyzer configuration in all regions and updates the results dictionary.
     """
@@ -939,17 +933,17 @@ def check_access_analyzer_all_regions_and_update_results(session, results, expla
                 })
 
         if analyzer_violations:
-            results["1.20"] = {
+            results["1.19"] = {
                 "description": "Ensure AWS Access Analyzer is enabled in all regions",
                 "result": analyzer_violations,
-                "explanation": explanation_1_20,
+                "explanation": explanation_1_19,
                 "status": "FAIL"
             }
         else:
-            results["1.20"] = {
+            results["1.19"] = {
                 "description": "Ensure AWS Access Analyzer is enabled in all regions",
                 "result": "AWS Access Analyzer is enabled in all regions.",
-                "explanation": explanation_1_20,
+                "explanation": explanation_1_19,
                 "status": "PASS"
             }
 
@@ -957,7 +951,7 @@ def check_access_analyzer_all_regions_and_update_results(session, results, expla
 
     except Exception as e:
         logger.error(f"Error in 1.20 check: {str(e)}")
-        results["1.20"] = {
+        results["1.19"] = {
             "description": "Ensure AWS Access Analyzer is enabled in all regions",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -970,7 +964,7 @@ def check_access_analyzer_all_regions_and_update_results(session, results, expla
 
 organizations = session.client('organizations')
 
-def check_centralized_iam_management_and_update_results(session, results, explanation_1_21):
+def check_centralized_iam_management_and_update_results(session, results, explanation_1_20):
     """
     Checks for centralized IAM management via identity federation or AWS Organizations and updates the results dictionary.
     """
@@ -991,20 +985,20 @@ def check_centralized_iam_management_and_update_results(session, results, explan
             logger.error(f"Error accessing AWS Organizations: {str(e)}")
             organizations_status = {"Available": False}
 
-        results["1.21"] = {
+        results["1.20"] = {
             "description": "Ensure IAM users are managed centrally via identity federation or AWS Organizations for multi-account environments",
             "result": {
                 "Identity_Providers": [idp['Arn'] for idp in identity_providers],
                 "AWS_Organizations_Status": organizations_status
             },
-            "explanation": explanation_1_21,
+            "explanation": explanation_1_20,
             "status": "PASS" if identity_providers or organizations_status['Available'] else "FAIL"
         }
         write_results_to_file(results)
 
     except Exception as e:
         logger.error(f"Error in 1.21 check: {str(e)}")
-        results["1.21"] = {
+        results["1.20"] = {
             "description": "Ensure IAM users are managed centrally via identity federation or AWS Organizations for multi-account environments",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -1013,7 +1007,7 @@ def check_centralized_iam_management_and_update_results(session, results, explan
 
 
 
-def check_cloudshell_full_access_restriction_and_update_results(session, results, explanation_1_22):
+def check_cloudshell_full_access_restriction_and_update_results(session, results, explanation_1_21):
     """
     Checks for users, roles, or groups with AWSCloudShellFullAccess and updates the results dictionary.
     """
@@ -1047,21 +1041,21 @@ def check_cloudshell_full_access_restriction_and_update_results(session, results
                 if has_policy(attached_policies, 'AWSCloudShellFullAccess'):
                     groups_with_policy.append(group['GroupName'])
 
-        results["1.22"] = {
+        results["1.21"] = {
             "description": "Ensure access to AWSCloudShellFullAccess is restricted",
             "result": {
                 "Users_With_AWSCloudShellFullAccess": users_with_policy,
                 "Roles_With_AWSCloudShellFullAccess": roles_with_policy,
                 "Groups_With_AWSCloudShellFullAccess": groups_with_policy
             },
-            "explanation": explanation_1_22,
+            "explanation": explanation_1_21,
             "status": "PASS" if not users_with_policy and not roles_with_policy and not groups_with_policy else "FAIL"
         }
         write_results_to_file(results)
 
     except Exception as e:
         logger.error(f"Error in 1.22 check: {str(e)}")
-        results["1.22"] = {
+        results["1.21"] = {
             "description": "Ensure access to AWSCloudShellFullAccess is restricted",
             "result": f"Error occurred during check: {str(e)}",
             "status": "ERROR"
@@ -2612,25 +2606,25 @@ def move_to_output(src_path, dest_directory):
         print(f"Source path does not exist: {src_path}")
 
 check_functions = {
-    "1.4": lambda: check_root_access_keys_and_update_results(session, results, explanation_1_4),
-    "1.5": lambda: check_root_user_mfa(session, results, explanation_1_5),
-    "1.6": lambda: check_root_virtual_mfa(session, results),
-    "1.7": lambda: check_root_user_last_activity_and_update_results(session, results, explanation_1_7),
-    "1.8": lambda: check_password_policy_and_update_results(session, results, explanation_1_8),
-    "1.9": lambda: check_password_reuse_prevention_and_update_results(session, results, explanation_1_9),
-    "1.10": lambda: check_mfa_on_users_and_update_results(session, results, explanation_1_10),
-    "1.11": lambda: check_initial_user_setup_violations_and_update_results(session, results, explanation_1_11),
-    "1.12": lambda: check_credentials_unused_and_update_results(session, results, explanation_1_12),
-    "1.13": lambda: check_single_active_access_key_and_update_results(session, results, explanation_1_13),
-    "1.14": lambda: check_access_key_rotation_and_update_results(session, results, explanation_1_14),
-    "1.15": lambda: check_permissions_through_groups_and_update_results(session, results, explanation_1_15),
-    "1.16": lambda: check_no_full_admin_policies_and_update_results(session, results, explanation_1_16),
-    "1.17": lambda: check_support_role_with_policy_and_update_results(session, results, explanation_1_17),
-    "1.18": lambda: check_iam_instance_roles_and_update_results(session, results),
-    "1.19": lambda: check_expired_ssl_certificates_and_update_results(session, results, explanation_1_19),
-    "1.20": lambda: check_access_analyzer_all_regions_and_update_results(session, results, explanation_1_20, regions),
-    "1.21": lambda: check_centralized_iam_management_and_update_results(session, results, explanation_1_21),
-    "1.22": lambda: check_cloudshell_full_access_restriction_and_update_results(session, results, explanation_1_22),
+    "1.3": lambda: check_root_access_keys_and_update_results(session, results, explanation_1_3),
+    "1.4": lambda: check_root_user_mfa(session, results, explanation_1_4),
+    "1.5": lambda: check_root_virtual_mfa(session, results),
+    "1.6": lambda: check_root_user_last_activity_and_update_results(session, results, explanation_1_6),
+    "1.7": lambda: check_password_policy_and_update_results(session, results, explanation_1_7),
+    "1.8": lambda: check_password_reuse_prevention_and_update_results(session, results, explanation_1_8),
+    "1.9": lambda: check_mfa_on_users_and_update_results(session, results, explanation_1_9),
+    "1.10": lambda: check_initial_user_setup_violations_and_update_results(session, results, explanation_1_10),
+    "1.11": lambda: check_credentials_unused_and_update_results(session, results, explanation_1_11),
+    "1.12": lambda: check_single_active_access_key_and_update_results(session, results, explanation_1_12),
+    "1.13": lambda: check_access_key_rotation_and_update_results(session, results, explanation_1_13),
+    "1.14": lambda: check_permissions_through_groups_and_update_results(session, results, explanation_1_14),
+    "1.15": lambda: check_no_full_admin_policies_and_update_results(session, results, explanation_1_15),
+    "1.16": lambda: check_support_role_with_policy_and_update_results(session, results, explanation_1_16),
+    "1.17": lambda: check_iam_instance_roles_and_update_results(session, results),
+    "1.18": lambda: check_expired_ssl_certificates_and_update_results(session, results, explanation_1_18),
+    "1.19": lambda: check_access_analyzer_all_regions_and_update_results(session, results, explanation_1_19, regions),
+    "1.20": lambda: check_centralized_iam_management_and_update_results(session, results, explanation_1_20),
+    "1.21": lambda: check_cloudshell_full_access_restriction_and_update_results(session, results, explanation_1_21),
     "2.1.1": lambda: check_deny_http_requests_and_update_results(session, results, explanation_2_1_1),
     "2.1.2": lambda: check_mfa_delete_enabled_and_update_results(session, results, explanation_2_1_2),
     "2.1.4": lambda: check_s3_bucket_public_access_and_update_results(session, results, explanation_2_1_4),
@@ -2659,77 +2653,88 @@ check_functions = {
 }
 
 def main():
+    # This variable will eventually hold your results, either loaded from file or updated during checks.
+    # Initialize as an empty dict by default.
+    results = {}
+
     if args.html_only:
         if os.path.exists("results.json"):
             with open("results.json", "r") as f:
-                results = {}
                 results = json.load(f)
-            # Regenerate HTML from existing results.json
             html_data = generate_html(results)
             with open('results.html', 'w') as f:
                 f.write(html_data)
             print("HTML report regenerated: results.html")
         else:
             print("Error: results.json file not found. Run the script without --html-only first.")
-        return
+        
+        # If --screenshot is also provided, do not exit; proceed to capture screenshots.
+        if not args.screenshot:
+            # If --screenshot is not provided, exit here.
+            return
 
-    profile_name = args.profile
-    session = boto3.Session(profile_name=profile_name)
+    # If we're not in HTML-only mode, proceed with the checks.
+    if not args.html_only:
+        profile_name = args.profile
+        session = boto3.Session(profile_name=profile_name)
+        DEFAULT_REGIONS = ["us-east-1", "us-east-2", "us-west-1", "us-west-2"]
 
-    DEFAULT_REGIONS = ["us-east-1", "us-east-2", "us-west-1", "us-west-2"]
-
-    if args.regions:
-        regions = args.regions.split(",")
-    else:
-        try:
-            regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
-        except botocore.exceptions.ClientError as e:
-            print(f"Error fetching AWS regions dynamically: {e}")
-            print(f"Falling back to default regions: {', '.join(DEFAULT_REGIONS)}")
-            regions = DEFAULT_REGIONS
-
-    if args.check:
-        if args.check in check_functions:
-            print(f"Performing Check for {args.check}")
-            check_functions[args.check]()
+        if args.regions:
+            regions = args.regions.split(",")
         else:
-            print(f"Invalid check number: {args.check}")
-            sys.exit(1)
-    else:
-        for check_number, check_function in check_functions.items():
-            print(f"Performing Check for {check_number}")
-            check_function()
+            try:
+                regions = [region['RegionName'] for region in session.client('ec2').describe_regions()['Regions']]
+            except botocore.exceptions.ClientError as e:
+                print(f"Error fetching AWS regions dynamically: {e}")
+                print(f"Falling back to default regions: {', '.join(DEFAULT_REGIONS)}")
+                regions = DEFAULT_REGIONS
 
-    html_data = generate_html(results)
-    with open('results.html', 'w') as f:
-        f.write(html_data)
-    print("HTML Created")
+        if args.check:
+            if args.check in check_functions:
+                print(f"Performing Check for {args.check}")
+                check_functions[args.check]()
+            else:
+                print(f"Invalid check number: {args.check}")
+                sys.exit(1)
+        else:
+            for check_number, check_function in check_functions.items():
+                print(f"Performing Check for {check_number}")
+                check_function()
 
-    print("Capturing Screenshots")
-    current_dir = os.getcwd()
-    html_file_path = os.path.join(current_dir, "results.html")
-    output_directory = os.path.join(current_dir, "screenshots")
-
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-
-    capture_screenshot(f"file:///{html_file_path}", output_directory)
-
-    profile_name = args.profile if args.profile != 'default' and len(args.profile) > 1 else "AWSResults"
-    output_directory = os.path.join(os.getcwd(), profile_name)
-
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-
-    items_to_move = [
-        os.path.join(os.getcwd(), 'results.json'),
-        os.path.join(os.getcwd(), 'results.html'),
-        os.path.join(os.getcwd(), 'screenshots')
-    ]
-
-    for item in items_to_move:
-        move_to_output(item, output_directory)
-
+        # After running the checks, generate the HTML report.
+        html_data = generate_html(results)
+        with open('results.html', 'w') as f:
+            f.write(html_data)
+        print("HTML Created")
+    
+    # At this point, HTML report has been created.
+    # If the screenshot flag is enabled (either in HTML-only mode or normal mode with --screenshot), capture screenshots.
+    if args.screenshot:
+        print("Capturing Screenshots")
+        current_dir = os.getcwd()
+        html_file_path = os.path.join(current_dir, "results.html")
+        output_directory = os.path.join(current_dir, "screenshots")
+    
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
+    
+        capture_screenshot(f"file:///{html_file_path}", output_directory)
+    
+        profile_name = args.profile if args.profile != 'default' and len(args.profile) > 1 else "AWSResults"
+        output_directory = os.path.join(os.getcwd(), profile_name)
+    
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
+    
+        items_to_move = [
+            os.path.join(os.getcwd(), 'results.json'),
+            os.path.join(os.getcwd(), 'results.html'),
+            os.path.join(os.getcwd(), 'screenshots')
+        ]
+    
+        for item in items_to_move:
+            move_to_output(item, output_directory)
+    
     print("CIS Check Complete")
 
 if __name__ == "__main__":
