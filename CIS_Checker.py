@@ -2653,8 +2653,6 @@ check_functions = {
 }
 
 def main():
-    # This variable will eventually hold your results, either loaded from file or updated during checks.
-    # Initialize as an empty dict by default.
     results = {}
 
     if args.html_only:
@@ -2668,12 +2666,9 @@ def main():
         else:
             print("Error: results.json file not found. Run the script without --html-only first.")
         
-        # If --screenshot is also provided, do not exit; proceed to capture screenshots.
         if not args.screenshot:
-            # If --screenshot is not provided, exit here.
             return
 
-    # If we're not in HTML-only mode, proceed with the checks.
     if not args.html_only:
         profile_name = args.profile
         session = boto3.Session(profile_name=profile_name)
@@ -2701,14 +2696,11 @@ def main():
                 print(f"Performing Check for {check_number}")
                 check_function()
 
-        # After running the checks, generate the HTML report.
         html_data = generate_html(results)
         with open('results.html', 'w') as f:
             f.write(html_data)
         print("HTML Created")
     
-    # At this point, HTML report has been created.
-    # If the screenshot flag is enabled (either in HTML-only mode or normal mode with --screenshot), capture screenshots.
     if args.screenshot:
         print("Capturing Screenshots")
         current_dir = os.getcwd()
